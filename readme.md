@@ -1,5 +1,5 @@
 
-# Gated Regularization for Offline Reinforcement Learning
+# Gated Regularization for Offline Reinforcement Learning (Continuous Actions)
 
 This repository contains experimental code for evaluating gated regularization methods in offline reinforcement learning on [D4RL](https://github.com/Farama-Foundation/D4RL) MuJoCo benchmarks.
 Baseline algorithms are from the [d3rlpy](https://github.com/takuseno/d3rlpy) library and adapted to incorporate the gating mechanism.
