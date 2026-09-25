@@ -1,0 +1,85 @@
+x-run-service: &run-service
+  image: grc-run:latest
+  hostname: grc-run
+  ipc: host
+  volumes:
+    - .:/app
+    - type: bind
+      source: ./data/minari
+      target: /home/devuser/.minari
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ./data/d4rl
+      target: /home/devuser/.d4rl
+      bind:
+        create_host_path: false
+    - type: bind
+      source: ./data/cache
+      target: /home/devuser/.cache
+      bind:
+        create_host_path: false
+  working_dir: /app
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  dev:
+    build:
+      context: .
+      target: dev
+      args:
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+    image: grc-dev:latest
+    container_name: grc-dev
+    hostname: grc-dev
+    security_opt:
+      - seccomp=unconfined
+    ipc: host
+    volumes:
+      - .:/app
+      - type: bind
+        source: ./data/minari
+        target: /home/devuser/.minari
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data/d4rl
+        target: /home/devuser/.d4rl
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data/cache
+        target: /home/devuser/.cache
+        bind:
+          create_host_path: false
+    working_dir: /app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  run:
+    <<: *run-service
+    build:
+      context: .
+      target: run
+      args:
+        USER_ID: ${UID:-1000}
+        GROUP_ID: ${GID:-1000}
+    entrypoint: ["python"]
+    command: ["--help"]
+
+  run-zsh:
+    <<: *run-service
+    entrypoint: ["zsh"]
+    command: ["-l"]
