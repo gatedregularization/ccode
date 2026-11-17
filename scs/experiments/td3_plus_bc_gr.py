@@ -32,6 +32,19 @@ def main() -> None:
     parser.add_argument(
         "--compile", action="store_true", help="Compile the model graph"
     )
+    parser.add_argument(
+        "--gate_mode",
+        type=str,
+        default="std",
+        choices=("std", "constant", "uniform"),
+        help="Gate computation mode ('std', 'constant', or 'uniform')",
+    )
+    parser.add_argument(
+        "--exp_prefix",
+        type=str,
+        default="TD3PlusBCgR",
+        help="Prefix for the logged experiment directory",
+    )
     args = parser.parse_args()
 
     dataset, env = get_minari(args.dataset)
@@ -50,6 +63,7 @@ def main() -> None:
         observation_scaler=d3rlpy.preprocessing.StandardObservationScaler(),
         gate_weight=args.gate_weight,
         gate_floor=args.gate_floor,
+        gate_mode=args.gate_mode,
         compile_graph=args.compile,
     ).create(device=args.gpu)
 
@@ -60,7 +74,7 @@ def main() -> None:
         save_interval=10,
         logger_adapter=FileAdapterFactory(root_dir="data/d3rlpy_logdata"),
         evaluators={"reward_progression": d3rlpy.metrics.EnvironmentEvaluator(env)},
-        experiment_name=f"TD3PlusBCgR_{args.gate_weight}_{args.dataset}_{args.seed}",
+        experiment_name=f"{args.exp_prefix}_{args.gate_weight}_{args.dataset}_{args.seed}",
     )
 
 

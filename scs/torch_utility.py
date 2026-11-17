@@ -4,7 +4,12 @@ from dataclasses import (
     dataclass,
     field,
 )
+import os
 from typing import TYPE_CHECKING
+
+# Disable TorchInductor AOTAutogradCache so persistent caches do not crash
+# d3rlpy's compiled_autograd backward passes across runs.
+os.environ.setdefault("TORCHINDUCTOR_AUTOGRAD_CACHE", "0")
 
 from d3rlpy.torch_utility import (
     TorchMiniBatch,
@@ -36,10 +41,14 @@ class TorchMiniBatchWithPolicy(TorchMiniBatch):
     Attributes:
         means: Batched policy means.
         stds: Batched policy standard deviations.
+        next_means: Batched policy means at next observations.
+        next_stds: Batched policy standard deviations at next observations.
     """
 
     means: torch.Tensor = field(default_factory=lambda: torch.tensor([]))
     stds: torch.Tensor = field(default_factory=lambda: torch.tensor([]))
+    next_means: torch.Tensor = field(default_factory=lambda: torch.tensor([]))
+    next_stds: torch.Tensor = field(default_factory=lambda: torch.tensor([]))
 
     @classmethod
     def from_batch(
@@ -69,6 +78,8 @@ class TorchMiniBatchWithPolicy(TorchMiniBatch):
         intervals = convert_to_torch(batch.intervals, device)
         means = convert_to_torch(batch.means, device)
         stds = convert_to_torch(batch.stds, device)
+        next_means = convert_to_torch(batch.next_means, device)
+        next_stds = convert_to_torch(batch.next_stds, device)
 
         if compute_returns_to_go:
             returns_to_go = convert_to_torch(
@@ -113,6 +124,8 @@ class TorchMiniBatchWithPolicy(TorchMiniBatch):
             device=device,
             means=means,
             stds=stds,
+            next_means=next_means,
+            next_stds=next_stds,
             numpy_batch=batch,
         )
 
@@ -133,3 +146,5 @@ class TorchMiniBatchWithPolicy(TorchMiniBatch):
         self.intervals.copy_(src.intervals)
         self.stds.copy_(src.stds)
         self.means.copy_(src.means)
+        self.next_stds.copy_(src.next_stds)
+        self.next_means.copy_(src.next_means)

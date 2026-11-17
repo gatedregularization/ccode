@@ -52,8 +52,9 @@ def main() -> None:
     )
 
     actor_beta, critic_beta = 0.01, 0.01
+    normalized_dataset = args.dataset.replace("/", "-")
     for dataset_name, beta_from_paper in BETA_TABLE.items():
-        if dataset_name in args.dataset:
+        if dataset_name in normalized_dataset:
             actor_beta, critic_beta = beta_from_paper
             break
 

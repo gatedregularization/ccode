@@ -54,6 +54,7 @@ class CQLgRImpl(CQLImpl):
         gate_floor: float,
         compiled: bool,
         device: str,
+        gate_mode: str = "std",
     ):
         super().__init__(
             observation_shape=observation_shape,
@@ -73,6 +74,7 @@ class CQLgRImpl(CQLImpl):
         )
         self._gate_weight: float = gate_weight
         self._gate_floor: float = gate_floor
+        self._gate_mode: str = gate_mode
 
     def compute_critic_loss(
         self, batch: TorchMiniBatchWithPolicy, q_tpn: torch.Tensor
@@ -85,6 +87,7 @@ class CQLgRImpl(CQLImpl):
             obs_tp1=batch.next_observations,
             returns_to_go=batch.returns_to_go,
             stds=batch.stds,
+            means=batch.means,
         )
 
         if self._modules.alpha_optim:
@@ -108,6 +111,7 @@ class CQLgRImpl(CQLImpl):
         obs_tp1: TorchObservation,
         returns_to_go: torch.Tensor,
         stds: torch.Tensor,
+        means: torch.Tensor | None = None,
     ) -> torch.Tensor:
         policy_values_t, log_probs_t = self._compute_policy_is_values(
             policy_obs=obs_t,
@@ -136,8 +140,16 @@ class CQLgRImpl(CQLImpl):
         # estimate action-values for data actions
         data_values = self._q_func_forwarder.compute_expected_q(obs_t, act_t, "none")
         pre_gate_loss = logsumexp - data_values
-        # gR: Scale conservative loss by behavior policy confidence (Eq. 11).
+        # gR: Scale conservative gap by mean-normalized behavior policy confidence.
         with torch.no_grad():
-            gate = std_gate(stds, self._gate_weight, self._gate_floor)
-        loss = (gate * pre_gate_loss).mean(dim=[1, 2])
+            gate = std_gate(
+                stds,
+                self._gate_weight,
+                self._gate_floor,
+                means=means,
+                per_dim=False,
+                normalize=True,
+                gate_mode=self._gate_mode,
+            )
+        loss = (gate.unsqueeze(0) * pre_gate_loss).mean(dim=[1, 2])
         return self._conservative_weight * (loss - self._alpha_threshold)

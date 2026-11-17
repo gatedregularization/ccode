@@ -40,9 +40,16 @@ class TransitionPickerWithPolicy(TransitionPickerProtocol):
         if is_terminal:
             next_observation = create_zero_observation(observation)
             next_action = np.zeros_like(episode.actions[index])
+            # Reuse current policy stats on terminal steps so batch mean-normalization
+            # of next_stds is not skewed by artificial zeros; TD backup masks terminal
+            # target values via (1 - terminal) anyway.
+            next_mean = episode.means[index]
+            next_std = episode.stds[index]
         else:
             next_observation = retrieve_observation(episode.observations, index + 1)
             next_action = episode.actions[index + 1]
+            next_mean = episode.means[index + 1]
+            next_std = episode.stds[index + 1]
 
         return TransitionWithPolicy(
             observation=observation,
@@ -55,4 +62,6 @@ class TransitionPickerWithPolicy(TransitionPickerProtocol):
             rewards_to_go=episode.rewards[index:],
             mean=episode.means[index],
             std=episode.stds[index],
+            next_mean=next_mean,
+            next_std=next_std,
         )
