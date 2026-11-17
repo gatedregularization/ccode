@@ -95,6 +95,8 @@ class CQLgRConfig(LearnableConfig):
         gate_weight (float): Weight injected to the gate in the loss function and
             changes the aggressiveness of the gate.
         gate_floor (float): Minimum gate value to preserve a safety margin.
+        gate_mode (str): Gate computation mode (``"std"``, ``"constant"``, or
+            ``"uniform"``).
         compile_graph (bool): Flag to enable JIT compilation and CUDAGraph.
     """
 
@@ -122,6 +124,7 @@ class CQLgRConfig(LearnableConfig):
     max_q_backup: bool = False
     gate_weight: float = 2.0
     gate_floor: float = 0.0
+    gate_mode: str = "std"
 
     def create(self, device: DeviceArg = False, enable_ddp: bool = False) -> CQLgR:
         return CQLgR(self, device, enable_ddp)
@@ -228,6 +231,7 @@ class CQLgR(QLearningAlgoBase[CQLgRImpl, CQLgRConfig]):
             max_q_backup=self._config.max_q_backup,
             gate_weight=self._config.gate_weight,
             gate_floor=self._config.gate_floor,
+            gate_mode=self._config.gate_mode,
             compiled=self.compiled,
             device=self._device,
         )

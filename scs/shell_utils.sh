@@ -97,9 +97,61 @@ run_experiment() {
 
     start_epoch=$EPOCHSECONDS
 
-    if python -m scs.experiments."${algo}" \
+    if TORCHINDUCTOR_AUTOGRAD_CACHE=0 python -m scs.experiments."${algo}" \
         --dataset "$dataset" \
         --seed "$seed" \
+        --gpu \
+        --compile; then
+        exit_code=0
+    else
+        exit_code=$?
+    fi
+
+    end_epoch=$EPOCHSECONDS
+    elapsed_seconds=$((end_epoch - start_epoch))
+    elapsed_hms=$(printf '%02d:%02d:%02d' \
+        $((elapsed_seconds / 3600)) \
+        $(((elapsed_seconds % 3600) / 60)) \
+        $((elapsed_seconds % 60)))
+
+    log_message "TIME ${run_id} elapsed=${elapsed_hms} (${elapsed_seconds}s)" "${log_targets[@]}"
+
+    if (( exit_code == 0 )); then
+        log_message "DONE ${run_id}" "${log_targets[@]}"
+    else
+        log_message "FAIL ${run_id} exit_code=${exit_code}" "${log_targets[@]}"
+    fi
+
+    return "$exit_code"
+}
+
+run_ablation_experiment() {
+    local algo="$1" exp_prefix="$2" dataset="$3" seed="$4" gate_mode="$5" gate_weight="$6" log_root="$7" batch_log_file="${8:-}"
+    local safe_dataset run_id log_dir
+    local start_epoch end_epoch elapsed_seconds elapsed_hms exit_code
+    local -a log_targets
+
+    safe_dataset=$(safe_dataset_name "$dataset")
+    run_id="${exp_prefix}_${gate_weight}_${safe_dataset}_s${seed}"
+    log_dir="${log_root}/${run_id}"
+    log_targets=("${log_dir}/run.log")
+
+    mkdir -p "$log_dir"
+    if [[ -n "$batch_log_file" ]]; then
+        mkdir -p "${batch_log_file:h}"
+        log_targets+=("$batch_log_file")
+    fi
+
+    log_message "RUN algo=${algo} prefix=${exp_prefix} gate_mode=${gate_mode} gate_weight=${gate_weight} dataset=${dataset} seed=${seed}" "${log_targets[@]}"
+
+    start_epoch=$EPOCHSECONDS
+
+    if TORCHINDUCTOR_AUTOGRAD_CACHE=0 python -m scs.experiments."${algo}" \
+        --dataset "$dataset" \
+        --seed "$seed" \
+        --gate_weight "$gate_weight" \
+        --gate_mode "$gate_mode" \
+        --exp_prefix "$exp_prefix" \
         --gpu \
         --compile; then
         exit_code=0

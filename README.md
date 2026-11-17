@@ -56,6 +56,13 @@ Gated regularization:
 docker compose run --rm run-zsh ./with_gate.sh
 ```
 
+Constant-gate ($0.5$) and stochastic-gate ($\mathrm{Uniform}[0, 1]$) ablations:
+
+```bash
+docker compose run --rm run-zsh ./ablation_constant.sh
+docker compose run --rm run-zsh ./ablation_stochastic.sh
+```
+
 Each script runs:
 - 3 algorithms
 - 3 datasets
@@ -130,6 +137,8 @@ Persistent data lives under `data/`:
 - `data/d3rlpy_logdata/` checkpoints and metrics
 - `data/logs_without_gate/` batch logs from `without_gate.sh`
 - `data/logs_with_gate/` batch logs from `with_gate.sh`
+- `data/logs_ablation_constant/` batch logs from `ablation_constant.sh`
+- `data/logs_ablation_stochastic/` batch logs from `ablation_stochastic.sh`
 
 ## Algorithms
 

@@ -25,11 +25,12 @@ __all__ = ["ReBRACgRImpl"]
 class ReBRACgRImpl(ReBRACImpl):
     """ReBRAC with gated regularization (ReBRACgR).
 
-    Adapted from d3rlpy's ReBRACImpl. Applies ``std_gate`` to both terms of the
-    actor loss: the Q-value objective and behavior-cloning penalty. The critic
-    target retains ReBRAC's ungated behavior-cloning penalty.
+    Adapted from d3rlpy's ReBRACImpl. Applies per-dimension ``std_gate``
+    strictly to the behavior-cloning penalties in both the actor objective
+    (at ``s_t``) and the critic Bellman target (at ``s_{t+1}``, matching the
+    Gated Bellman Operator in Equation 10).
 
-    See ``compute_actor_loss``.
+    See ``compute_actor_loss`` and ``compute_target``.
     """
 
     def __init__(
@@ -50,6 +51,7 @@ class ReBRACgRImpl(ReBRACImpl):
         gate_floor: float,
         compiled: bool,
         device: str,
+        gate_mode: str = "std",
     ):
         super().__init__(
             observation_shape=observation_shape,
@@ -69,6 +71,7 @@ class ReBRACgRImpl(ReBRACImpl):
         )
         self._gate_weight = gate_weight
         self._gate_floor = gate_floor
+        self._gate_mode = gate_mode
 
     def compute_actor_loss(
         self, batch: TorchMiniBatchWithPolicy, action: ActionOutput
@@ -79,14 +82,22 @@ class ReBRACgRImpl(ReBRACImpl):
             reduction="min",
         )
         lam = 1 / (q_t.abs().mean()).detach()
-        # gR: Scale BC loss with gate (Eq. 11).
+        # gR: Scale BC penalty per action dimension without scaling -q_t.
         with torch.no_grad():
-            gate = std_gate(batch.stds, self._gate_weight, self._gate_floor)
+            gate = std_gate(
+                batch.stds,
+                self._gate_weight,
+                self._gate_floor,
+                means=batch.means,
+                per_dim=True,
+                normalize=True,
+                gate_mode=self._gate_mode,
+            )
         bc_loss = (gate * ((batch.actions - action.squashed_mu) ** 2)).sum(
             dim=1, keepdim=True
         )
         return TD3PlusBCActorLoss(
-            actor_loss=(gate * lam * -q_t + self._actor_beta * bc_loss).mean(),
+            actor_loss=(lam * -q_t + self._actor_beta * bc_loss).mean(),
             bc_loss=bc_loss.mean(),
         )
 
@@ -107,8 +118,17 @@ class ReBRACgRImpl(ReBRACImpl):
                 reduction="min",
             )
 
-            # BRAC reguralization
-            bc_penalty = ((clipped_action - batch.next_actions) ** 2).sum(
+            # Gated BRAC regularization at s_{t+1} (Eq. 10).
+            next_gate = std_gate(
+                batch.next_stds,
+                self._gate_weight,
+                self._gate_floor,
+                means=batch.next_means,
+                per_dim=True,
+                normalize=True,
+                gate_mode=self._gate_mode,
+            )
+            bc_penalty = (next_gate * ((clipped_action - batch.next_actions) ** 2)).sum(
                 dim=1, keepdim=True
             )
 

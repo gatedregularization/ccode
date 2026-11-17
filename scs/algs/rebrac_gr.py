@@ -80,6 +80,8 @@ class ReBRACgRConfig(LearnableConfig):
         gate_weight (float): Weight injected to the gate in the loss function and
             changes the aggressiveness of the gate.
         gate_floor (float): Minimum gate value to preserve a safety margin.
+        gate_mode (str): Gate computation mode (``"std"``, ``"constant"``, or
+            ``"uniform"``).
         compile_graph (bool): Flag to enable JIT compilation and CUDAGraph.
     """
 
@@ -101,6 +103,7 @@ class ReBRACgRConfig(LearnableConfig):
     update_actor_interval: int = 2
     gate_weight: float = 2.0
     gate_floor: float = 0.0
+    gate_mode: str = "std"
 
     def create(self, device: DeviceArg = False, enable_ddp: bool = False) -> ReBRACgR:
         return ReBRACgR(self, device, enable_ddp)
@@ -180,6 +183,7 @@ class ReBRACgR(QLearningAlgoBase[ReBRACgRImpl, ReBRACgRConfig]):
             update_actor_interval=self._config.update_actor_interval,
             gate_weight=self._config.gate_weight,
             gate_floor=self._config.gate_floor,
+            gate_mode=self._config.gate_mode,
             compiled=self.compiled,
             device=self._device,
         )

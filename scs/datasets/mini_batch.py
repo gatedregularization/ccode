@@ -39,10 +39,14 @@ class TransitionMiniBatchWithPolicy(TransitionMiniBatch):
         transitions: List of transitions.
         means: Batched policy means.
         stds: Batched policy standard deviations.
+        next_means: Batched policy means at next observations.
+        next_stds: Batched policy standard deviations at next observations.
     """
 
     means: Float32NDArray  # (B, ...)
     stds: Float32NDArray  # (B, ...)
+    next_means: Float32NDArray  # (B, ...)
+    next_stds: Float32NDArray  # (B, ...)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -50,6 +54,10 @@ class TransitionMiniBatchWithPolicy(TransitionMiniBatch):
         assert check_dtype(self.means, np.float32)
         assert check_non_1d_array(self.stds)
         assert check_dtype(self.stds, np.float32)
+        assert check_non_1d_array(self.next_means)
+        assert check_dtype(self.next_means, np.float32)
+        assert check_non_1d_array(self.next_stds)
+        assert check_dtype(self.next_stds, np.float32)
 
     @classmethod
     def from_transitions(
@@ -84,6 +92,12 @@ class TransitionMiniBatchWithPolicy(TransitionMiniBatch):
         )
         means = np.stack([transition.mean for transition in transitions], axis=0)
         stds = np.stack([transition.std for transition in transitions], axis=0)
+        next_means = np.stack(
+            [transition.next_mean for transition in transitions], axis=0
+        )
+        next_stds = np.stack(
+            [transition.next_std for transition in transitions], axis=0
+        )
         return TransitionMiniBatchWithPolicy(
             observations=cast_recursively(observations, np.float32),
             actions=cast_recursively(actions, np.float32),
@@ -95,6 +109,8 @@ class TransitionMiniBatchWithPolicy(TransitionMiniBatch):
             transitions=transitions,
             means=cast_recursively(means, np.float32),
             stds=cast_recursively(stds, np.float32),
+            next_means=cast_recursively(next_means, np.float32),
+            next_stds=cast_recursively(next_stds, np.float32),
         )
 
     @property

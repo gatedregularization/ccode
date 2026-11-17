@@ -37,10 +37,14 @@ class TransitionWithPolicy(Transition):
             used to compute returns_to_go.
         mean: Mean of the policy.
         std: Standard deviation of the policy.
+        next_mean: Mean of the policy at the next observation.
+        next_std: Standard deviation of the policy at the next observation.
     """
 
     mean: NDArray  # (...)
     std: NDArray  # (...)
+    next_mean: NDArray  # (...)
+    next_std: NDArray  # (...)
 
     @property
     def mean_signature(self) -> Signature:

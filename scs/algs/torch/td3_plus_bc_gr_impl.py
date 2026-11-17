@@ -52,6 +52,7 @@ class TD3PlusBCgRImpl(TD3PlusBCImpl):
         gate_floor: float,
         compiled: bool,
         device: str,
+        gate_mode: str = "std",
     ):
         super().__init__(
             observation_shape=observation_shape,
@@ -70,6 +71,7 @@ class TD3PlusBCgRImpl(TD3PlusBCImpl):
         )
         self._gate_weight = gate_weight
         self._gate_floor = gate_floor
+        self._gate_mode = gate_mode
 
     def compute_actor_loss(
         self, batch: TorchMiniBatchWithPolicy, action: ActionOutput
@@ -78,9 +80,17 @@ class TD3PlusBCgRImpl(TD3PlusBCImpl):
             batch.observations, action.squashed_mu, "none"
         )[0]
         lam = self._alpha / (q_t.abs().mean()).detach()
-        # gR: Scale BC loss with gate (Eq. 11).
+        # gR: Scale BC loss per action dimension with mean-normalized gate.
         with torch.no_grad():
-            gate = std_gate(batch.stds, self._gate_weight, self._gate_floor)
+            gate = std_gate(
+                batch.stds,
+                self._gate_weight,
+                self._gate_floor,
+                means=batch.means,
+                per_dim=True,
+                normalize=True,
+                gate_mode=self._gate_mode,
+            )
         gated_bc_loss = (gate * ((batch.actions - action.squashed_mu) ** 2)).mean()
         return TD3PlusBCActorLoss(
             actor_loss=lam * -q_t.mean() + gated_bc_loss, bc_loss=gated_bc_loss
